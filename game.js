@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { PointerLockControls } from 'three/examples/js/controls/PointerLockControls.js';
-import { GLTFLoader } from 'three/examples/js/loaders/GLTFLoader.js';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { updateHUD } from './hud.js';
 import { generateMap } from './map.js';
 import { updateAI } from './ai.js';
@@ -11,14 +11,19 @@ import { spawnLoot, updateLoot } from './loot.js';
 import { updateZone } from './zone.js';
 import { updateContracts } from './contracts.js';
 
+// Variables globales del juego
 let scene, camera, renderer, clock, controls, lastShot = 0;
 let velocity = new THREE.Vector3();
-let gravity = -30;
-let weaponModel;
+const gravity = -30;
+let weaponModel = null;
+let isInitialized = false;
+let animationFrameId = null;
 
 // DOM elements
 const loadingScreen = document.getElementById('loadingScreen');
+const gameCanvas = document.getElementById('gameCanvas');
 
+// Estado del jugador
 export const player = {
   health: 100,
   weapon: 'rifle',
@@ -29,74 +34,193 @@ export const player = {
   onGround: false
 };
 
-// Carga persistencia
-if (localStorage.getItem('player')) {
-  const saved = JSON.parse(localStorage.getItem('player'));
-  Object.assign(player, saved);
-  if (saved.position) {
-    player.position.set(saved.position.x, saved.position.y, saved.position.z);
+// Estado del juego en memoria
+const gameState = {
+  player: null,
+  lastSave: Date.now()
+};
+
+// Input handling
+const keys = {};
+
+// Cargar estado inicial
+function loadGameState() {
+  if (gameState.player) {
+    Object.assign(player, gameState.player);
+    if (gameState.player.position) {
+      player.position.set(
+        gameState.player.position.x,
+        gameState.player.position.y,
+        gameState.player.position.z
+      );
+    }
   }
 }
 
-const keys = {};
-
+// Inicialización principal
 function init() {
-  scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x87ceeb, 20, 200);
+  if (isInitialized) {
+    console.warn('Game already initialized');
+    return;
+  }
 
-  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
-  camera.position.copy(player.position);
+  if (!gameCanvas) {
+    console.error('Canvas element not found');
+    return;
+  }
 
-  renderer = new THREE.WebGLRenderer({ canvas: gameCanvas, antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  try {
+    // Configurar escena
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb);
+    scene.fog = new THREE.Fog(0x87ceeb, 20, 200);
 
-  clock = new THREE.Clock();
+    // Configurar cámara
+    camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      500
+    );
+    camera.position.copy(player.position);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
-  sun.position.set(100, 200, 100);
-  scene.add(sun);
+    // Configurar renderer
+    renderer = new THREE.WebGLRenderer({ 
+      canvas: gameCanvas, 
+      antialias: true,
+      powerPreference: "high-performance"
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-  generateMap(scene);
-  initAudio();
-  spawnLoot(scene);
+    // Clock para delta time
+    clock = new THREE.Clock();
 
-  controls = new PointerLockControls(camera, document.body);
-  document.body.addEventListener('click', () => controls.lock());
+    // Iluminación
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
 
-  document.addEventListener('keydown', e => keys[e.code] = true);
-  document.addEventListener('keyup', e => keys[e.code] = false);
+    const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+    sun.position.set(100, 200, 100);
+    sun.castShadow = true;
+    sun.shadow.camera.left = -100;
+    sun.shadow.camera.right = 100;
+    sun.shadow.camera.top = 100;
+    sun.shadow.camera.bottom = -100;
+    sun.shadow.mapSize.width = 2048;
+    sun.shadow.mapSize.height = 2048;
+    scene.add(sun);
 
-  loadWeaponModel(player.weapon);
+    // Generar mundo
+    generateMap(scene);
+    initAudio();
+    spawnLoot(scene);
 
-  loadingScreen.style.display = 'none';
-  animate();
+    // Configurar controles
+    controls = new PointerLockControls(camera, document.body);
+
+    // Click para activar pointer lock
+    document.body.addEventListener('click', () => {
+      if (controls && controls.lock) {
+        controls.lock();
+      }
+    });
+
+    // Input listeners
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+
+    // Cargar modelo del arma
+    loadWeaponModel(player.weapon);
+
+    // Ocultar pantalla de carga
+    if (loadingScreen) {
+      loadingScreen.style.display = 'none';
+    }
+
+    isInitialized = true;
+    loadGameState();
+    animate();
+
+  } catch (error) {
+    console.error('Error initializing game:', error);
+  }
 }
 
+// Manejo de input
+function handleKeyDown(e) {
+  keys[e.code] = true;
+}
+
+function handleKeyUp(e) {
+  keys[e.code] = false;
+}
+
+// Guardar estado del jugador
 function savePlayer() {
-  localStorage.setItem('player', JSON.stringify({
+  const now = Date.now();
+  if (now - gameState.lastSave < 1000) return;
+  
+  gameState.player = {
     health: player.health,
     ammo: player.ammo,
     reserve: player.reserve,
     coins: player.coins,
     weapon: player.weapon,
-    position: { x: player.position.x, y: player.position.y, z: player.position.z }
-  }));
+    position: {
+      x: player.position.x,
+      y: player.position.y,
+      z: player.position.z
+    }
+  };
+  gameState.lastSave = now;
 }
 
+// Cargar modelo del arma
 function loadWeaponModel(name) {
   const loader = new GLTFLoader();
-  loader.load(`https://rawcdn.githack.com/KenneyNL/3D-Assets/main/${name}.glb`, gltf => {
-    if (weaponModel) camera.remove(weaponModel);
-    weaponModel = gltf.scene;
-    weaponModel.position.set(0, -0.5, -1);
-    camera.add(weaponModel);
-  });
+  const modelUrl = `https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/Duck/glTFBinary/Duck.glb`;
+  
+  loader.load(
+    modelUrl,
+    (gltf) => {
+      if (weaponModel) {
+        camera.remove(weaponModel);
+        weaponModel.traverse((child) => {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(m => m.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        });
+      }
+      
+      weaponModel = gltf.scene;
+      weaponModel.scale.set(0.1, 0.1, 0.1);
+      weaponModel.position.set(0.3, -0.5, -1);
+      weaponModel.rotation.y = Math.PI;
+      camera.add(weaponModel);
+    },
+    undefined,
+    (error) => {
+      console.error('Error loading weapon model:', error);
+    }
+  );
 }
 
+// Movimiento del jugador
 function handleMovement(dt) {
-  let speed = keys['ShiftLeft'] ? 10 : 5;
-  let move = new THREE.Vector3();
+  if (!camera || !player) return;
+  
+  dt = Math.min(dt, 0.1);
+  
+  const speed = keys['ShiftLeft'] ? 10 : 5;
+  const move = new THREE.Vector3();
 
   if (keys['KeyW']) move.z = -speed;
   if (keys['KeyS']) move.z = speed;
@@ -104,6 +228,8 @@ function handleMovement(dt) {
   if (keys['KeyD']) move.x = speed;
 
   move.applyEuler(camera.rotation);
+  move.y = 0;
+  
   velocity.x = move.x;
   velocity.z = move.z;
 
@@ -112,63 +238,140 @@ function handleMovement(dt) {
     player.onGround = false;
   }
 
-  velocity.y += gravity * dt;
+  if (!player.onGround) {
+    velocity.y += gravity * dt;
+  }
+
   player.position.addScaledVector(velocity, dt);
 
-  if (player.position.y < 2) {
+  if (player.position.y <= 2) {
     player.position.y = 2;
     velocity.y = 0;
     player.onGround = true;
   }
 
+  player.position.x = Math.max(-100, Math.min(100, player.position.x));
+  player.position.z = Math.max(-100, Math.min(100, player.position.z));
+
   camera.position.copy(player.position);
 }
 
+// Loop principal
 function animate() {
-  requestAnimationFrame(animate);
-  const dt = clock.getDelta();
+  if (!isInitialized) return;
+  
+  animationFrameId = requestAnimationFrame(animate);
 
-  handleMovement(dt);
-  updateAI(scene, player, dt);
-  updateHUD(player);
-  updateMinimap(player);
-  updateLoot(player);
-  updateZone(player, scene, dt);
-  updateContracts(player);
+  try {
+    const dt = clock.getDelta();
 
-  renderer.render(scene, camera);
-  savePlayer();
+    handleMovement(dt);
+    updateAI(scene, player, dt);
+    updateHUD(player);
+    updateMinimap(player);
+    updateLoot(player);
+    updateZone(player, scene, dt);
+    updateContracts(player);
+
+    if (renderer && scene && camera) {
+      renderer.render(scene, camera);
+    }
+
+    savePlayer();
+
+  } catch (error) {
+    console.error('Error in animation loop:', error);
+  }
 }
 
-// ===================== CONTROLES =====================
+// ===================== CONTROLES PÚBLICOS =====================
 window.shoot = function () {
+  if (!clock || !weapons) return;
+  
   const now = clock.getElapsedTime();
-  if (now - lastShot > weapons[player.weapon].rate && player.ammo > 0) {
+  const weaponData = weapons[player.weapon];
+  
+  if (!weaponData) return;
+  
+  const fireRate = weaponData.rate || 0.1;
+  
+  if (now - lastShot > fireRate && player.ammo > 0) {
     player.ammo--;
     lastShot = now;
     playSound('shoot');
-    if (weaponModel) weaponModel.rotation.x -= 0.1;
-    setTimeout(() => { if (weaponModel) weaponModel.rotation.x += 0.1; }, 50);
+    
+    if (weaponModel) {
+      weaponModel.rotation.x -= 0.1;
+      setTimeout(() => {
+        if (weaponModel) {
+          weaponModel.rotation.x += 0.1;
+        }
+      }, 100);
+    }
   }
-}
+};
 
 window.reload = function () {
-  let need = weapons[player.weapon].mag - player.ammo;
-  let take = Math.min(need, player.reserve);
+  if (!weapons) return;
+  
+  const weaponData = weapons[player.weapon];
+  if (!weaponData) return;
+  
+  const need = weaponData.mag - player.ammo;
+  if (need <= 0 || player.reserve <= 0) return;
+  
+  const take = Math.min(need, player.reserve);
   player.ammo += take;
   player.reserve -= take;
   playSound('reload');
-}
+};
 
 window.throwGrenade = function () {
   playSound('grenade');
-}
+};
 
 window.switchWeapon = function (name) {
-  if (weapons[name]) {
-    player.weapon = name;
-    loadWeaponModel(name);
-  }
-}
+  if (!weapons || !weapons[name]) return;
+  
+  if (player.weapon === name) return;
+  
+  player.weapon = name;
+  const weaponData = weapons[name];
+  player.ammo = weaponData.mag;
+  player.reserve = weaponData.mag * 3;
+  
+  loadWeaponModel(name);
+};
 
-window.onload = init;
+// Manejo de redimensionamiento
+window.addEventListener('resize', () => {
+  if (!camera || !renderer) return;
+  
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Cleanup al cerrar
+window.addEventListener('beforeunload', () => {
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+  }
+  
+  if (controls) {
+    controls.dispose();
+  }
+  
+  if (renderer) {
+    renderer.dispose();
+  }
+  
+  savePlayer();
+});
+
+// Iniciar cuando cargue la página
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
