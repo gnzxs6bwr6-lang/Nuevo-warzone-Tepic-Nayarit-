@@ -4,7 +4,104 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tepic Resurgimiento Ultra Final</title>
-<link rel="stylesheet" href="style.css">
+<style>
+html,body{
+  margin:0;
+  padding:0;
+  overflow:hidden;
+  background:#000;
+  font-family:Arial,Helvetica,sans-serif;
+}
+
+#gameCanvas{
+  width:100vw;
+  height:100vh;
+  display:block;
+}
+
+#hud{
+  position:absolute;
+  top:10px;
+  left:10px;
+  color:white;
+  z-index:10;
+  font-size:16px;
+}
+
+#hud div{
+  margin-bottom:5px;
+}
+
+#minimap{
+  position:absolute;
+  right:10px;
+  top:10px;
+  width:150px;
+  height:150px;
+  border:2px solid #fff;
+  background:rgba(0,0,0,0.6);
+}
+
+#controls{
+  position:absolute;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:10px;
+}
+
+#controls button{
+  padding:12px 16px;
+  font-size:16px;
+  border:none;
+  border-radius:8px;
+  background:linear-gradient(45deg,#1e90ff,#00bfff);
+  color:white;
+  cursor:pointer;
+}
+
+#controls button:active{
+  transform:scale(0.95);
+  box-shadow:0 0 8px #00bfff;
+}
+
+#loadingScreen{
+  position:absolute;
+  inset:0;
+  background:#000;
+  color:white;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:24px;
+  z-index:100;
+}
+
+#lootPanel,#storePanel{
+  position:absolute;
+  bottom:100px;
+  left:50%;
+  transform:translateX(-50%);
+  width:300px;
+  background:rgba(0,0,0,0.8);
+  color:white;
+  padding:10px;
+  border-radius:8px;
+  display:none;
+}
+
+#lootPanel button,#storePanel button{
+  margin-top:5px;
+  width:100%;
+  padding:6px;
+  background:linear-gradient(45deg,#32cd32,#228b22);
+  border:none;
+  border-radius:4px;
+  color:white;
+  cursor:pointer;
+}
+</style>
 </head>
 <body>
 
@@ -13,40 +110,33 @@
 <div id="loadingScreen">Cargando Tepic Ultra...</div>
 
 <div id="hud">
-  <div id="health"></div>
-  <div id="ammo"></div>
-  <div id="coins"></div>
-  <div id="contract"></div>
-  <div id="minimap"></div>
+  <div id="health"></div>
+  <div id="ammo"></div>
+  <div id="coins"></div>
+  <div id="contract"></div>
 </div>
 
+<div id="minimap"></div>
+
 <div id="controls">
-  <button onclick="shoot()">🔫</button>
-  <button onclick="reload()">🔄</button>
-  <button onclick="throwGrenade()">💣</button>
-  <button onclick="switchWeapon('rifle')">Rifle</button>
-  <button onclick="switchWeapon('shotgun')">Escopeta</button>
-  <button onclick="switchWeapon('pistol')">Pistola</button>
+  <button onclick="shoot()">🔫</button>
+  <button onclick="reload()">🔄</button>
+  <button onclick="throwGrenade()">💣</button>
+  <button onclick="switchWeapon('rifle')">Rifle</button>
+  <button onclick="switchWeapon('shotgun')">Escopeta</button>
+  <button onclick="switchWeapon('pistol')">Pistola</button>
 </div>
 
 <div id="lootPanel"></div>
 <div id="storePanel"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.161.0/examples/js/controls/PointerLockControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.161.0/examples/js/loaders/GLTFLoader.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+  }
+}
+</script>
 
-<script type="module" src="Game.js"></script>
-<script type="module" src="hud.js"></script>
-<script type="module" src="audio.js"></script>
-<script type="module" src="map.js"></script>
-<script type="module" src="ai.js"></script>
-<script type="module" src="items.js"></script>
-<script type="module" src="store.js"></script>
-<script type="module" src="minimap.js"></script>
-<script type="module" src="loot.js"></script>
-<script type="module" src="zone.js"></script>
-<script type="module" src="contracts.js"></script>
-
-</body>
-</html>
+<script type="module">
