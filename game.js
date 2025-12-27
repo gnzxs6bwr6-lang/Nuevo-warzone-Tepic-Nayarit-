@@ -1,52 +1,84 @@
+// Variables globales
+let scene, camera, renderer, clock;
+let controls;
+let weaponModel;
+let keys = {};
+
+// Inicializamos el jugador antes de todo
+const player = {
+  position: new THREE.Vector3(0, 1.8, 0),
+  weapon: 'pistol' // Cambia por el arma que quieras
+};
+
 function init() {
   const loadingScreen = document.getElementById('loadingScreen');
 
-  scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x87ceeb, 20, 200);
+  try {
+    // Crear la escena
+    scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x87ceeb, 20, 200);
 
-  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
-  camera.position.copy(player.position);
+    // Configurar cámara
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
+    camera.position.copy(player.position);
 
-  renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
+    // Configurar renderer
+    renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
 
-  clock = new THREE.Clock();
+    // Reloj para animaciones
+    clock = new THREE.Clock();
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
-  sun.position.set(100, 200, 100);
-  scene.add(sun);
+    // Luces
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
 
-  generateMap(scene);
-  initAudio();
-  spawnLoot(scene);
+    const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+    sun.position.set(100, 200, 100);
+    scene.add(sun);
 
-  controls = new PointerLockControls(camera, document.body);
-  document.body.addEventListener('click', () => controls.lock());
+    // Generar mapa y loot
+    generateMap(scene);
+    spawnLoot(scene);
+    initAudio();
 
-  document.addEventListener('keydown', e => keys[e.code] = true);
-  document.addEventListener('keyup', e => keys[e.code] = false);
+    // Controles
+    controls = new PointerLockControls(camera, document.body);
+    document.body.addEventListener('click', () => controls.lock());
 
-  // Carga del arma con manejo de errores
-  loadWeaponModel(player.weapon, loadingScreen);
+    // Teclado
+    document.addEventListener('keydown', e => keys[e.code] = true);
+    document.addEventListener('keyup', e => keys[e.code] = false);
 
-  // Asegurarse de que la pantalla de carga desaparezca aunque falle la carga
-  setTimeout(() => {
+    // Cargar arma
+    loadWeaponModel(player.weapon, loadingScreen);
+
+    // Garantizar que la pantalla de carga desaparezca
+    setTimeout(() => {
+      if (loadingScreen) loadingScreen.style.display = 'none';
+    }, 7000); // 7 segundos máximo
+
+    // Iniciar animación
+    animate();
+  } catch (e) {
+    console.error('Error en init:', e);
     if (loadingScreen) loadingScreen.style.display = 'none';
-  }, 5000); // 5 segundos máximo
-
-  animate();
+  }
 }
 
 function loadWeaponModel(name, loadingScreen) {
-  const loader = new GLTFLoader();
+  const loader = new THREE.GLTFLoader();
   loader.load(
     `https://rawcdn.githack.com/KenneyNL/3D-Assets/main/${name}.glb`,
     gltf => {
+      // Remover arma anterior si existe
       if (weaponModel) camera.remove(weaponModel);
+
+      // Agregar nuevo modelo
       weaponModel = gltf.scene;
       weaponModel.position.set(0, -0.5, -1);
       camera.add(weaponModel);
+
       if (loadingScreen) loadingScreen.style.display = 'none';
       console.log('Arma cargada correctamente:', name);
     },
@@ -58,5 +90,15 @@ function loadWeaponModel(name, loadingScreen) {
   );
 }
 
-// Guardado periódico en lugar de cada frame
+// Guardado periódico
 setInterval(savePlayer, 5000);
+
+// Animación básica
+function animate() {
+  requestAnimationFrame(animate);
+
+  const delta = clock.getDelta();
+  if (controls) controls.update(delta);
+
+  renderer.render(scene, camera);
+}
