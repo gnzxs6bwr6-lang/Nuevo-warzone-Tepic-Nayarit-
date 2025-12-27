@@ -11,157 +11,167 @@ import { spawnLoot, updateLoot } from './loot.js';
 import { updateZone } from './zone.js';
 import { updateContracts } from './contracts.js';
 
-let scene,camera,renderer,clock,controls,lastShot=0;
-let velocity=new THREE.Vector3();
-let gravity=-30;
+let scene, camera, renderer, clock, controls, lastShot = 0;
+let velocity = new THREE.Vector3();
+let gravity = -30;
 let weaponModel;
 
-export const player={
-  health:100,
-  weapon:'rifle',
-  ammo:30,
-  reserve:90,
-  coins:0,
-  position:new THREE.Vector3(0,2,0),
-  onGround:false
+export const player = {
+  health: 100,
+  weapon: 'rifle',
+  ammo: 30,
+  reserve: 90,
+  coins: 0,
+  position: new THREE.Vector3(0, 2, 0),
+  onGround: false
 };
 
 // Carga persistencia
 if(localStorage.getItem('player')){
-  const saved=JSON.parse(localStorage.getItem('player'));
-  Object.assign(player,saved);
+  const saved = JSON.parse(localStorage.getItem('player'));
+  Object.assign(player, saved);
+  if(saved.position) player.position.set(saved.position.x, saved.position.y, saved.position.z);
 }
 
-const keys={};
+const keys = {};
 
-function init(){
-  scene=new THREE.Scene();
-  scene.fog=new THREE.Fog(0x87ceeb,20,200);
+function init() {
+  const loadingScreen = document.getElementById('loadingScreen'); // CORRECCIÓN
 
-  camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,500);
-  camera.position.copy(player.position);
+  scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x87ceeb, 20, 200);
 
-  renderer=new THREE.WebGLRenderer({canvas:gameCanvas,antialias:true});
-  renderer.setSize(window.innerWidth,window.innerHeight);
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
+  camera.position.copy(player.position);
 
-  clock=new THREE.Clock();
+  renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
 
-  scene.add(new THREE.AmbientLight(0xffffff,.6));
-  const sun=new THREE.DirectionalLight(0xffffff,.8);
-  sun.position.set(100,200,100);
-  scene.add(sun);
+  clock = new THREE.Clock();
 
-  generateMap(scene);
-  initAudio();
-  spawnLoot(scene);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+  sun.position.set(100, 200, 100);
+  scene.add(sun);
 
-  controls=new PointerLockControls(camera,document.body);
-  document.body.addEventListener('click',()=>controls.lock());
+  generateMap(scene);
+  initAudio();
+  spawnLoot(scene);
 
-  document.addEventListener('keydown',e=>keys[e.code]=true);
-  document.addEventListener('keyup',e=>keys[e.code]=false);
+  controls = new PointerLockControls(camera, document.body);
+  document.body.addEventListener('click', () => controls.lock());
 
-  loadWeaponModel(player.weapon);
+  document.addEventListener('keydown', e => keys[e.code] = true);
+  document.addEventListener('keyup', e => keys[e.code] = false);
 
-  loadingScreen.style.display='none';
-  animate();
+  loadWeaponModel(player.weapon);
+
+  loadingScreen.style.display = 'none'; // CORRECCIÓN
+  animate();
 }
 
-function savePlayer(){
-  localStorage.setItem('player',JSON.stringify({
-    health:player.health,
-    ammo:player.ammo,
-    reserve:player.reserve,
-    coins:player.coins,
-    weapon:player.weapon,
-    position:player.position
-  }));
+function savePlayer() {
+  localStorage.setItem('player', JSON.stringify({
+    health: player.health,
+    ammo: player.ammo,
+    reserve: player.reserve,
+    coins: player.coins,
+    weapon: player.weapon,
+    position: { x: player.position.x, y: player.position.y, z: player.position.z } // CORRECCIÓN
+  }));
 }
 
-function loadWeaponModel(name){
-  const loader=new GLTFLoader();
-  loader.load(`https://rawcdn.githack.com/KenneyNL/3D-Assets/main/${name}.glb`, gltf=>{
-    if(weaponModel) camera.remove(weaponModel);
-    weaponModel=gltf.scene;
-    weaponModel.position.set(0,-0.5,-1);
-    camera.add(weaponModel);
-  });
+function loadWeaponModel(name) {
+  const loader = new GLTFLoader();
+  const url = `https://rawcdn.githack.com/KenneyNL/3D-Assets/main/${name}.glb`;
+  loader.load(
+    url,
+    gltf => {
+      if(weaponModel) camera.remove(weaponModel);
+      weaponModel = gltf.scene;
+      weaponModel.position.set(0, -0.5, -1);
+      camera.add(weaponModel);
+    },
+    undefined,
+    err => console.error('Error cargando arma', err)
+  );
 }
 
-function handleMovement(dt){
-  let speed=keys['ShiftLeft']?10:5;
-  let move=new THREE.Vector3();
+function handleMovement(dt) {
+  let speed = keys['ShiftLeft'] ? 10 : 5;
+  let move = new THREE.Vector3();
 
-  if(keys['KeyW']) move.z=-speed;
-  if(keys['KeyS']) move.z=speed;
-  if(keys['KeyA']) move.x=-speed;
-  if(keys['KeyD']) move.x=speed;
+  if(keys['KeyW']) move.z = -speed;
+  if(keys['KeyS']) move.z = speed;
+  if(keys['KeyA']) move.x = -speed;
+  if(keys['KeyD']) move.x = speed;
 
-  move.applyEuler(camera.rotation);
-  velocity.x=move.x;
-  velocity.z=move.z;
+  move.applyEuler(camera.rotation);
+  velocity.x = move.x;
+  velocity.z = move.z;
 
-  if(player.onGround && keys['Space']){
-    velocity.y=15;
-    player.onGround=false;
-  }
+  if(player.onGround && keys['Space']){
+    velocity.y = 15;
+    player.onGround = false;
+  }
 
-  velocity.y+=gravity*dt;
-  player.position.addScaledVector(velocity,dt);
+  velocity.y += gravity * dt;
+  player.position.addScaledVector(velocity, dt);
 
-  if(player.position.y<2){
-    player.position.y=2;
-    velocity.y=0;
-    player.onGround=true;
-  }
+  if(player.position.y < 2){
+    player.position.y = 2;
+    velocity.y = 0;
+    player.onGround = true;
+  }
 
-  camera.position.copy(player.position);
+  camera.position.copy(player.position);
 }
 
-function animate(){
-  requestAnimationFrame(animate);
-  const dt=clock.getDelta();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
 
-  handleMovement(dt);
-  updateAI(scene,player,dt);
-  updateHUD(player);
-  updateMinimap(player);
-  updateLoot(player);
-  updateZone(player,scene,dt);
-  updateContracts(player);
+  handleMovement(dt);
+  updateAI(scene, player, dt);
+  updateHUD(player);
+  updateMinimap(player);
+  updateLoot(player);
+  updateZone(player, scene, dt);
+  updateContracts(player);
 
-  renderer.render(scene,camera);
-  savePlayer();
+  renderer.render(scene, camera);
+  savePlayer();
 }
 
-window.shoot=function(){
-  const now=clock.getElapsedTime();
-  if(now-lastShot>weapons[player.weapon].rate && player.ammo>0){
-    player.ammo--;
-    lastShot=now;
-    playSound('shoot');
-    if(weaponModel) weaponModel.rotation.x-=0.1;
-    setTimeout(()=>{if(weaponModel) weaponModel.rotation.x+=0.1;},50);
-  }
+// Controles globales
+window.shoot = function() {
+  const now = clock.getElapsedTime();
+  if(now - lastShot > weapons[player.weapon].rate && player.ammo > 0){
+    player.ammo--;
+    lastShot = now;
+    playSound('shoot');
+    if(weaponModel) weaponModel.rotation.x -= 0.1;
+    setTimeout(() => { if(weaponModel) weaponModel.rotation.x += 0.1; }, 50);
+  }
 }
 
-window.reload=function(){
-  let need=weapons[player.weapon].mag-player.ammo;
-  let take=Math.min(need,player.reserve);
-  player.ammo+=take;
-  player.reserve-=take;
-  playSound('reload');
+window.reload = function() {
+  let need = weapons[player.weapon].mag - player.ammo;
+  let take = Math.min(need, player.reserve);
+  player.ammo += take;
+  player.reserve -= take;
+  playSound('reload');
 }
 
-window.throwGrenade=function(){
-  playSound('grenade');
+window.throwGrenade = function() {
+  playSound('grenade');
 }
 
-window.switchWeapon=function(name){
-  if(weapons[name]){
-    player.weapon=name;
-    loadWeaponModel(name);
-  }
+window.switchWeapon = function(name) {
+  if(weapons[name]){
+    player.weapon = name;
+    loadWeaponModel(name);
+  }
 }
 
-window.onload=init;
+window.onload = init;
