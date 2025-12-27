@@ -1,4 +1,9 @@
-export function updateHUD(player){
-  document.getElementById('health').innerText='Vida: '+Math.floor(player.health);
-  document.getElementById('ammo').innerText=`Ammo: ${player.ammo}/${player.reserve}`;
-  document.getElementById('coins').innerText='Monedas: '+player.coins;
+export function updateHUD(player) {
+  const healthEl = document.getElementById('health');
+  const ammoEl = document.getElementById('ammo');
+  const coinsEl = document.getElementById('coins');
+  
+  if (healthEl) healthEl.innerText = 'Vida: ' + Math.floor(player.health);
+  if (ammoEl) ammoEl.innerText = `Ammo: ${player.ammo}/${player.reserve}`;
+  if (coinsEl) coinsEl.innerText = 'Monedas: ' + player.coins;
+}
