@@ -1,3 +1,4 @@
+// ===================== Game.js =====================
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/js/controls/PointerLockControls.js';
 import { GLTFLoader } from 'three/examples/js/loaders/GLTFLoader.js';
@@ -27,10 +28,9 @@ export const player = {
 };
 
 // Carga persistencia
-if(localStorage.getItem('player')){
+if (localStorage.getItem('player')) {
   const saved = JSON.parse(localStorage.getItem('player'));
   Object.assign(player, saved);
-  if(saved.position) player.position.set(saved.position.x, saved.position.y, saved.position.z);
 }
 
 const keys = {};
@@ -64,9 +64,8 @@ function init() {
   document.addEventListener('keydown', e => keys[e.code] = true);
   document.addEventListener('keyup', e => keys[e.code] = false);
 
-  loadWeaponModel(player.weapon);
+  loadWeaponModel(player.weapon, loadingScreen); // CORRECCIÓN: pasamos loadingScreen
 
-  loadingScreen.style.display = 'none'; // CORRECCIÓN
   animate();
 }
 
@@ -77,40 +76,37 @@ function savePlayer() {
     reserve: player.reserve,
     coins: player.coins,
     weapon: player.weapon,
-    position: { x: player.position.x, y: player.position.y, z: player.position.z } // CORRECCIÓN
+    position: player.position
   }));
 }
 
-function loadWeaponModel(name) {
+function loadWeaponModel(name, loadingScreen) {
   const loader = new GLTFLoader();
-  const url = `https://rawcdn.githack.com/KenneyNL/3D-Assets/main/${name}.glb`;
-  loader.load(
-    url,
-    gltf => {
-      if(weaponModel) camera.remove(weaponModel);
-      weaponModel = gltf.scene;
-      weaponModel.position.set(0, -0.5, -1);
-      camera.add(weaponModel);
-    },
-    undefined,
-    err => console.error('Error cargando arma', err)
-  );
+  loader.load(`https://rawcdn.githack.com/KenneyNL/3D-Assets/main/${name}.glb`, gltf => {
+    if (weaponModel) camera.remove(weaponModel);
+    weaponModel = gltf.scene;
+    weaponModel.position.set(0, -0.5, -1);
+    camera.add(weaponModel);
+
+    // Ocultamos la pantalla de carga después de cargar el arma
+    if (loadingScreen) loadingScreen.style.display = 'none';
+  });
 }
 
 function handleMovement(dt) {
   let speed = keys['ShiftLeft'] ? 10 : 5;
   let move = new THREE.Vector3();
 
-  if(keys['KeyW']) move.z = -speed;
-  if(keys['KeyS']) move.z = speed;
-  if(keys['KeyA']) move.x = -speed;
-  if(keys['KeyD']) move.x = speed;
+  if (keys['KeyW']) move.z = -speed;
+  if (keys['KeyS']) move.z = speed;
+  if (keys['KeyA']) move.x = -speed;
+  if (keys['KeyD']) move.x = speed;
 
   move.applyEuler(camera.rotation);
   velocity.x = move.x;
   velocity.z = move.z;
 
-  if(player.onGround && keys['Space']){
+  if (player.onGround && keys['Space']) {
     velocity.y = 15;
     player.onGround = false;
   }
@@ -118,7 +114,7 @@ function handleMovement(dt) {
   velocity.y += gravity * dt;
   player.position.addScaledVector(velocity, dt);
 
-  if(player.position.y < 2){
+  if (player.position.y < 2) {
     player.position.y = 2;
     velocity.y = 0;
     player.onGround = true;
@@ -143,19 +139,18 @@ function animate() {
   savePlayer();
 }
 
-// Controles globales
-window.shoot = function() {
+window.shoot = function () {
   const now = clock.getElapsedTime();
-  if(now - lastShot > weapons[player.weapon].rate && player.ammo > 0){
+  if (now - lastShot > weapons[player.weapon].rate && player.ammo > 0) {
     player.ammo--;
     lastShot = now;
     playSound('shoot');
-    if(weaponModel) weaponModel.rotation.x -= 0.1;
-    setTimeout(() => { if(weaponModel) weaponModel.rotation.x += 0.1; }, 50);
+    if (weaponModel) weaponModel.rotation.x -= 0.1;
+    setTimeout(() => { if (weaponModel) weaponModel.rotation.x += 0.1; }, 50);
   }
 }
 
-window.reload = function() {
+window.reload = function () {
   let need = weapons[player.weapon].mag - player.ammo;
   let take = Math.min(need, player.reserve);
   player.ammo += take;
@@ -163,14 +158,15 @@ window.reload = function() {
   playSound('reload');
 }
 
-window.throwGrenade = function() {
+window.throwGrenade = function () {
   playSound('grenade');
 }
 
-window.switchWeapon = function(name) {
-  if(weapons[name]){
+window.switchWeapon = function (name) {
+  if (weapons[name]) {
     player.weapon = name;
-    loadWeaponModel(name);
+    const loadingScreen = document.getElementById('loadingScreen'); // CORRECCIÓN
+    loadWeaponModel(name, loadingScreen);
   }
 }
 
