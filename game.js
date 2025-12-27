@@ -3,7 +3,6 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0xa0a0a0, 10, 100);
 scene.background = new THREE.Color(0xbfd1e5);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -28,10 +27,15 @@ const ground = new THREE.Mesh(
 ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
 
-const player = { hp: 100, mag: 30, reserve: 120 };
+// Jugador global
+window.player = { hp: 100, mag: 30, reserve: 120 };
 
+// Animación
 function animate() {
   requestAnimationFrame(animate);
   renderer.render(scene, camera);
 }
 animate();
+
+// Quitar pantalla de carga
+document.getElementById("loading").style.display = "none";
