@@ -1,41 +1,52 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no"/>
-  <title>Resurgimiento Tepic Modular Persistente</title>
-  <link rel="stylesheet" href="style.css"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tepic Resurgimiento Ultra Final</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="loading">
-    <h1>Resurgimiento Tepic</h1>
-    <p>Cargando...</p>
-  </div>
 
-  <div id="hud">
-    <div class="badge" id="hudVida">Vida: <b id="hp">100</b></div>
-    <div class="badge" id="hudAmmo">Munición: <b id="ammo">30/120</b></div>
-  </div>
+<canvas id="gameCanvas"></canvas>
 
-  <div id="buttons">
-    <div class="btn" id="shoot">Disparar</div>
-    <div class="btn" id="reload">Recargar</div>
-    <div class="btn" id="grenade">Granada</div>
-    <div class="btn" id="openConfig">Config HUD</div>
-  </div>
+<div id="loadingScreen">Cargando Tepic Ultra...</div>
 
-  <div id="configHUD">
-    <h2>Configurar HUD</h2>
-    <label><input type="checkbox" id="toggleVida" checked> Mostrar Vida</label>
-    <label><input type="checkbox" id="toggleAmmo" checked> Mostrar Munición</label>
-    <button id="closeConfig">Cerrar</button>
-  </div>
+<div id="hud">
+  <div id="health"></div>
+  <div id="ammo"></div>
+  <div id="coins"></div>
+  <div id="contract"></div>
+  <div id="minimap"></div>
+</div>
 
-  <canvas id="view"></canvas>
+<div id="controls">
+  <button onclick="shoot()">🔫</button>
+  <button onclick="reload()">🔄</button>
+  <button onclick="throwGrenade()">💣</button>
+  <button onclick="switchWeapon('rifle')">Rifle</button>
+  <button onclick="switchWeapon('shotgun')">Escopeta</button>
+  <button onclick="switchWeapon('pistol')">Pistola</button>
+</div>
 
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-  <script src="Game.js"></script>
-  <script src="hud.js"></script>
-  <script src="audio.js"></script>
+<div id="lootPanel"></div>
+<div id="storePanel"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.161.0/examples/js/controls/PointerLockControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.161.0/examples/js/loaders/GLTFLoader.js"></script>
+
+<script type="module" src="Game.js"></script>
+<script type="module" src="hud.js"></script>
+<script type="module" src="audio.js"></script>
+<script type="module" src="map.js"></script>
+<script type="module" src="ai.js"></script>
+<script type="module" src="items.js"></script>
+<script type="module" src="store.js"></script>
+<script type="module" src="minimap.js"></script>
+<script type="module" src="loot.js"></script>
+<script type="module" src="zone.js"></script>
+<script type="module" src="contracts.js"></script>
+
 </body>
 </html>
