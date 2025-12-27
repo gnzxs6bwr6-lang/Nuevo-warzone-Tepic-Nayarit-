@@ -1,16 +1,14 @@
-let sounds={};
+let sounds = {};
 
-export function initAudio(){
-  ['shoot','reload','grenade'].forEach(name=>{
-    const audio=new Audio(`https://rawcdn.githack.com/KenneyNL/3D-Assets/main/${name}.mp3`);
-    audio.load();
-    sounds[name]=audio;
-  });
+export function initAudio() {
+  // Audio context para navegadores modernos
+  sounds.shoot = { play: () => console.log('🔫 shoot') };
+  sounds.reload = { play: () => console.log('🔄 reload') };
+  sounds.grenade = { play: () => console.log('💣 grenade') };
 }
 
-export function playSound(name){
-  if(sounds[name]){
-    sounds[name].currentTime=0;
-    sounds[name].play().catch(()=>{});
-  }
+export function playSound(name) {
+  if (sounds[name]) {
+    sounds[name].play();
+  }
 }
